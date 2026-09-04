@@ -19,7 +19,7 @@ export const verifyValidator = [
     .withMessage("otp is required")
     .matches(/^[0-9]+$/)
     .isLength({ min: 6, max: 6 })
-    .withMessage("OTP must be 6 digits"),
+    .withMessage("OTP must be 6 digits").escape(),
   body("rememberToken")
     .trim()
     .notEmpty()
@@ -37,7 +37,7 @@ export const confirmPasswordValidation = [
     .trim()
     .notEmpty()
     .isLength({ min: 6, max: 15 })
-    .withMessage("min 6 and max 15"),
+    .withMessage("min 6 and max 15").escape(),
   body("rememberToken")
     .trim()
     .notEmpty()

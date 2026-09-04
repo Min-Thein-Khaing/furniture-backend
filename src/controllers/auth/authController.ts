@@ -239,7 +239,9 @@ export const confirmPassword = async (
       message: "User created successfully",
       data: {
         userId: newUser.id,
-        newUser
+        newUser:{
+          omit:password
+        }
       },
     });
 };
