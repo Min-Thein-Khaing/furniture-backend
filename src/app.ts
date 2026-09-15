@@ -142,8 +142,8 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 //   console.log("running a task every minute");
 //   const setting = await getSettingStatus("maintenance");
 
-//   if (setting?.value === "false") {
-//     await createOrUpdateSetting("maintenance", "true");
+//   if (setting?.value === "true") {
+//     await createOrUpdateSetting("maintenance", "false");
 //     console.log("Maintenance mode is off");
 //   }
 // });
