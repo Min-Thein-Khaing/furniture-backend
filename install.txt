@@ -29,3 +29,18 @@ npm i ioredis bullmq
 //sanitize-html
 npm install sanitize-html
 npm i @types/sanitize-html
+
+
+npx prisma migrate diff \
+--from-empty \
+--to-schema=prisma/schema.prisma \
+--script > prisma/migrations/0_init/migration.sql
+
+npx prisma migrate resolve --applied 0_init
+
+db not touch migarate file  testing and direclly reach dabase base when i delete easily
+npx prisma db push 
+
+
+create migrate file to fix conlum name 
+npx prisma migrate create-only
