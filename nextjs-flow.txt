@@ -1,0 +1,95 @@
+Step-by-Step အကောင်အထည်ဖော်နည်း
+Step 1: Axios Instance & Interceptors ပြင်ဆင်ခြင်း (lib/axios.ts)
+Next.js ရဲ့ Client Components တွေမှာ သုံးဖို့ Axios Interceptor ကို အောက်ပါအတိုင်း ရေးနိုင်ပါတယ်။
+
+
+
+
+// lib/axios.ts
+import axios from 'axios';
+
+export const axiosAuth = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: { "Content-Type": "application/json" },
+  withCredentials: true, // Cookie ပါဝင်စေရန်
+});
+
+// Request Interceptor: AccessToken ကို Header ထဲ ထည့်ပေးခြင်း
+axiosAuth.interceptors.request.use(
+  (config) => {
+    // Client-side မှာ AccessToken ရှိရင် Header ထဲ ထည့်မည်
+    const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+    if (accessToken && config.headers) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Response Interceptor: 401 ရရင် Auto Refresh လုပ်ပေးခြင်း
+axiosAuth.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    // 401 Unauthorized ဖြစ်ပြီး မထပ်ခါအောင် _retry check လုပ်မည်
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Backend ရဲ့ Refresh Token Endpoint သို့ လှမ်းခေါ်မည်
+        // HttpOnly Cookie သုံးထားပါက backend ထံ cookie အလိုအလျောက် ပါသွားမည်
+        const res = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        const newAccessToken = res.data.accessToken;
+        
+        // AccessToken အသစ်ကို သိမ်းဆည်းပါ
+        localStorage.setItem('accessToken', newAccessToken);
+
+        // Request အဟောင်းကို AccessToken အသစ်ဖြင့် ပြန်လည် ပို့ဆောင်ပါ
+        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        return axiosAuth(originalRequest);
+      } catch (refreshError) {
+        // Refresh token ပါ သက်တမ်းကုန်သွားပါက Logout လုပ်ပါ
+        localStorage.removeItem('accessToken');
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+
+Step 2: Next.js Middleware ဖြင့် Route Protection ပြုလုပ်ခြင်း (middleware.ts)
+Next.js App Router (13/14/15) မှာ Page မပွင့်မီ Refresh Token / Access Token ကို စစ်ဆေးချင်ပါက middleware.ts ကို သုံးနိုင်ပါတယ်။
+
+// middleware.ts
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+export async function middleware(request: NextRequest) {
+  const refreshToken = request.cookies.get('refreshToken')?.value;
+  const path = request.nextUrl.pathname;
+
+  // Protected route များကို စစ်ဆေးခြင်း
+  const isProtectedRoute = path.startsWith('/dashboard') || path.startsWith('/profile');
+
+  if (isProtectedRoute && !refreshToken) {
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ['/dashboard/:path*', '/profile/:path*'],
+};
