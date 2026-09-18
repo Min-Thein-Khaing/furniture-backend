@@ -25,7 +25,6 @@ export const createOnePost = async (postData: PostPropsType) => {
         id: postData.authorId,
       },
     },
-    
   };
   if (postData.tags && postData.tags.length > 0) {
     data.tags = {
@@ -35,33 +34,36 @@ export const createOnePost = async (postData: PostPropsType) => {
       })),
     };
   }
-  return prisma.post.create({ data : data,include:{
-    user: true,
-    tags: true,
-    category: true,
+  return prisma.post.create({
+    data: data,
+    include: {
+      user: true,
+      tags: true,
+      category: true,
       type: true,
-  }});
+    },
+  });
 };
 
 export const updateOnePost = async (id: number, postData: PostPropsType) => {
-  const post:any = await prisma.post.findUnique({
+  const post: any = await prisma.post.findUnique({
     where: {
       id: id,
     },
   });
   if (!post) {
-    await deletePostImages(post.image)
     throw new ResponseError("Post not found", 404, "post_not_found");
   }
   const data: any = {
-    title: postData.title ,
-    content: postData.content ,
-    body: postData.body ,
-
-    
+    title: postData.title,
+    content: postData.content,
+    body: postData.body,
   };
   if (postData.image) {
-    data.image = postData.image 
+    if (post.image) {
+      await deletePostImages(post.image);
+    }
+    data.image = postData.image;
   }
 
   if (postData.tags && postData.tags.length > 0) {
@@ -69,7 +71,7 @@ export const updateOnePost = async (id: number, postData: PostPropsType) => {
       set: [],
       connectOrCreate: postData.tags.map((tag) => ({
         where: { name: tag },
-        create: { name: tag  },
+        create: { name: tag },
       })),
     };
   }
@@ -165,19 +167,18 @@ export const postWithRelation = async (id: number) => {
     }),
     user: post!.user
       ? {
-      firstName: post!.user.firstName,
-      lastName: post!.user.lastName,
-      fullName: `${post!.user.firstName} ${post!.user.lastName}`,
-    }
+          firstName: post!.user.firstName,
+          lastName: post!.user.lastName,
+          fullName: `${post!.user.firstName} ${post!.user.lastName}`,
+        }
       : null,
   };
   return customizePost;
 };
 
-
-export const getPostsByPaginationWithOffset = async(options:any) => {
+export const getPostsByPaginationWithOffset = async (options: any) => {
   const posts = await prisma.post.findMany({
-    ...options
+    ...options,
   });
-  return posts
-}
+  return posts;
+};
